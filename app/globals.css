@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
+  --background: #696969;
   --foreground: #e2e8f0;
 }
 
@@ -31,4 +31,26 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "IBM Plex Sans", "Segoe UI", sans-serif;
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/topography.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: invert(1) saturate(0) brightness(0.55);
+  opacity: 0.18;
+}
+
+/* When the sidebar is hidden (e.g. on the full-screen Main Menu), remove the left margin
+   that is applied server-side via Tailwind's `ml-56` class on the main element. */
+body.hide-sidebar main {
+  margin-left: 0 !important;
 }

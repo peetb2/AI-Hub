@@ -6,6 +6,15 @@ type ChatRequest = {
   prompt: string;
 };
 
+const runtimeModelMap: Record<string, string> = {
+  "glm-4.7-flash": "glm-4.7-flash:latest",
+  "qwen3.5": "qwen3.5:latest",
+};
+
+function resolveRuntimeModel(model: string) {
+  return runtimeModelMap[model] ?? model;
+}
+
 function looksLikeHtmlOrCode(content: string, prompt: string) {
   const normalizedPrompt = prompt.toLowerCase();
 
@@ -39,6 +48,7 @@ export async function POST(request: Request) {
 
   const baseUrl = getLocalAiBaseUrl();
   const apiKey = process.env.LOCAL_AI_API_KEY;
+  const runtimeModel = resolveRuntimeModel(body.model);
 
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -48,7 +58,7 @@ export async function POST(request: Request) {
         ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
-        model: body.model,
+        model: runtimeModel,
         messages: [
           {
             role: "system",
@@ -90,7 +100,7 @@ export async function POST(request: Request) {
 
     const formattedContent = looksLikeHtmlOrCode(content, body.prompt) ? wrapInHtmlFence(content) : content;
 
-    return NextResponse.json({ content: formattedContent });
+    return NextResponse.json({ content: formattedContent, usedModel: runtimeModel });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown local AI error";
     return NextResponse.json({ error: message }, { status: 502 });

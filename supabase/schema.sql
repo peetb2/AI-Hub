@@ -14,6 +14,7 @@ create table if not exists public.user_keys (
   key_name text not null default 'code-assistant',
   key_value text not null,
   created_at timestamptz not null default now(),
+  expires_at timestamptz null,
   revoked_at timestamptz null,
   unique (user_id, key_name)
 );

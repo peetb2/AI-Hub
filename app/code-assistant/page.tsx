@@ -2,10 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-
-const modeOptions = ["agent", "text"];
 
 const modelAliases: Record<string, string> = {
   "glm flash 4.7": "glm-4.7-flash",
@@ -34,7 +31,6 @@ function isMissingTableError(error: { message?: string; code?: string } | null |
 export default function CodeAssistantPage() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
-  const [selectedMode, setSelectedMode] = useState(modeOptions[0]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>(
     [],
@@ -144,18 +140,21 @@ export default function CodeAssistantPage() {
         },
         body: JSON.stringify({
           model: selectedModel,
-          mode: selectedMode,
+          mode: "agent",
           prompt: trimmed,
         }),
       });
 
-      const data = (await response.json()) as { content?: string; error?: string; details?: string };
+      const data = (await response.json()) as { content?: string; usedModel?: string; error?: string; details?: string };
 
       if (!response.ok) {
         throw new Error(data.error ?? "Local AI request failed");
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: data.content ?? "No response content returned." }]);
+      if (data.usedModel) {
+        setNotice(`Loaded activated models from your account. Current runtime model: ${data.usedModel}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown local AI error";
       setMessages((prev) => [
@@ -170,59 +169,9 @@ export default function CodeAssistantPage() {
     }
   };
 
-  const navItems = ["New Agent", "Automations", "Dashboard", "AI Chat"];
-
   return (
     <div className="min-h-screen bg-[#090b11] text-slate-100">
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <aside className="w-full border-b border-white/10 bg-[#07090f] md:w-72 md:border-b-0 md:border-r">
-          <div className="p-5">
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">SN-AI Hub</p>
-            <h1 className="mt-2 text-xl font-semibold text-white">Workspace</h1>
-          </div>
-
-          <nav className="px-3">
-            {navItems.map((item) => (
-              <div
-                key={item}
-                className={`mb-1 w-full rounded-lg px-3 py-2 text-left text-sm transition ${
-                  item === "AI Chat"
-                    ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                }`}
-              >
-                {item}
-              </div>
-            ))}
-
-            <Link
-              href="/key-center"
-              className="mb-1 block w-full rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-left text-sm font-medium text-emerald-200 transition hover:bg-emerald-300/20"
-            >
-              Key Center
-            </Link>
-            <Link
-              href="/api-keys"
-              className="mb-1 block w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10"
-            >
-              API Keys
-            </Link>
-          </nav>
-
-          <div className="flex items-center justify-between px-4 py-4 text-xs text-slate-400">
-            <span>Free Plan</span>
-            <div className="flex items-center gap-3">
-              <Link href="/" className="text-emerald-300 hover:text-emerald-200">
-                Main Menu
-              </Link>
-              <Link href="/auth/signout" className="text-slate-300 hover:text-white">
-                Sign Out
-              </Link>
-            </div>
-          </div>
-        </aside>
-
-        <main className="relative flex-1 bg-[#0a0d14] p-5 md:p-8">
+      <main className="relative flex-1 bg-[#0a0d14] p-5 md:p-8">
           <div className="pointer-events-none absolute right-8 top-8 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
 
           <div className="mx-auto max-w-4xl">
@@ -272,18 +221,6 @@ export default function CodeAssistantPage() {
                       </option>
                     ))}
                   </select>
-
-                  <select
-                    value={selectedMode}
-                    onChange={(event) => setSelectedMode(event.target.value)}
-                    className="rounded-md border border-white/15 bg-[#0f131d] px-2 py-1 text-xs text-slate-200"
-                  >
-                    {modeOptions.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <button
                   onClick={sendMessage}
@@ -298,6 +235,5 @@ export default function CodeAssistantPage() {
           </div>
         </main>
       </div>
-    </div>
-  );
-}
+    );
+  }

@@ -5,6 +5,7 @@ import { createApiKeyRecord } from "@/lib/gateway/apiKeys";
 type CreateKeyRequest = {
   model?: string;
   expiresAt?: string | null;
+  expiresInDays?: number | null;
 };
 
 export async function POST(request: Request) {
@@ -20,12 +21,14 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as CreateKeyRequest;
   const model = body.model ?? "glm-4.7-flash";
+  const parsedDays = typeof body.expiresInDays === "number" ? body.expiresInDays : null;
+  const expiresAt = body.expiresAt ?? (parsedDays && parsedDays > 0 ? new Date(Date.now() + parsedDays * 86400000).toISOString() : null);
 
   try {
     const key = await createApiKeyRecord({
       userId: user.id,
       allowedModel: model,
-      expiresAt: body.expiresAt ?? null,
+      expiresAt,
     });
 
     return NextResponse.json({

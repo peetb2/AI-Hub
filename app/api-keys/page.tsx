@@ -30,6 +30,7 @@ export default function ApiKeysPage() {
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [status, setStatus] = useState("Loading API keys...");
   const [selectedModel, setSelectedModel] = useState(modelOptions[0].value);
+  const [expiryDays, setExpiryDays] = useState("30");
   const [newKey, setNewKey] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -60,7 +61,7 @@ export default function ApiKeysPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ model: selectedModel }),
+        body: JSON.stringify({ model: selectedModel, expiresInDays: Number.parseInt(expiryDays, 10) }),
       });
 
       const data = (await response.json()) as NewApiKeyResponse & { error?: string };
@@ -114,33 +115,54 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090b11] text-slate-100">
-      <div className="mx-auto w-full max-w-4xl px-6 py-10">
+    <div
+      className="min-h-screen text-slate-100"
+      style={{
+        backgroundColor: "#696969",
+        backgroundImage: "url('/topography.svg')",
+        backgroundRepeat: "repeat",
+        backgroundSize: "600px 600px",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="mx-auto w-full max-w-2xl px-6 py-12">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">SN-AI Hub</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">API Keys</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Create and manage gateway keys for Continue and OpenAI-compatible clients.
-        </p>
+        <p className="mt-2 text-sm text-slate-400">Create and manage gateway keys for Continue and OpenAI-compatible clients.</p>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-[#0e1119] p-6">
-          <label className="mb-2 block text-sm text-slate-300">Allowed Model</label>
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={selectedModel}
-              onChange={(event) => setSelectedModel(event.target.value)}
-              className="rounded-lg border border-white/20 bg-[#080b12] px-3 py-2 text-sm"
-            >
-              {modelOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/90 shadow-xl backdrop-blur-md p-8">
+          <div className="grid gap-4 md:grid-cols-[1fr_160px_auto] md:items-end">
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">Allowed Model</label>
+              <select
+                value={selectedModel}
+                onChange={(event) => setSelectedModel(event.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/70 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+              >
+                {modelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">Expire in days</label>
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                value={expiryDays}
+                onChange={(event) => setExpiryDays(event.target.value)}
+                className="w-full rounded-lg border border-white/20 bg-black/70 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+              />
+            </div>
 
             <button
               onClick={createKey}
               disabled={loading}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-md transition hover:bg-emerald-400 disabled:opacity-60"
             >
               {loading ? "Working..." : "Create API Key"}
             </button>
@@ -152,7 +174,7 @@ export default function ApiKeysPage() {
               <p className="mt-2 break-all text-sm text-emerald-100">{newKey}</p>
               <button
                 onClick={copyNewKey}
-                className="mt-3 rounded-md border border-emerald-200/40 px-3 py-1 text-xs text-emerald-100"
+                className="mt-3 rounded-md border border-emerald-200/40 px-3 py-1 text-xs text-emerald-100 hover:bg-emerald-200/10 transition"
               >
                 Copy Key
               </button>
@@ -162,8 +184,10 @@ export default function ApiKeysPage() {
           <p className="mt-4 text-sm text-slate-300">{status}</p>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-[#0e1119] p-6">
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/90 shadow-xl backdrop-blur-md p-8">
           <h2 className="text-lg font-semibold text-white">Existing Keys</h2>
+
+          <p className="mt-2 text-sm text-slate-400">You have {keys.length} saved key{keys.length === 1 ? "" : "s"}.</p>
 
           <div className="mt-4 space-y-3">
             {keys.map((keyItem) => (
@@ -178,6 +202,9 @@ export default function ApiKeysPage() {
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Status: {keyItem.is_active ? "Active" : "Revoked"}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Expires: {keyItem.expires_at ? new Date(keyItem.expires_at).toLocaleString() : "Never"}
                 </p>
 
                 {keyItem.is_active && (
@@ -202,7 +229,7 @@ export default function ApiKeysPage() {
           <Link href="/code-assistant" className="rounded-full border border-emerald-300/40 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
             Open Code Assistant
           </Link>
-          <Link href="/key-center" className="rounded-full border border-white/20 px-4 py-2 text-sm text-slate-300">
+          <Link href="/#key-center" className="rounded-full border border-white/20 px-4 py-2 text-sm text-slate-300">
             Key Center
           </Link>
           <Link href="/" className="rounded-full border border-white/20 px-4 py-2 text-sm text-slate-300">

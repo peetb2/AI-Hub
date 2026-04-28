@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
 import { getSupabaseConfig } from "@/lib/supabase/config";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const config = getSupabaseConfig();
 
   if (!config) {
@@ -10,9 +10,31 @@ export async function GET(request: Request) {
     return NextResponse.redirect(url);
   }
 
-  const supabase = await createClient();
+  const response = NextResponse.redirect(new URL("/auth", request.url));
+
+  const supabase = createServerClient(
+    config.url,
+    config.anonKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, { ...options, maxAge: 0, path: "/" });
+          });
+        },
+      },
+    },
+  );
+
   await supabase.auth.signOut();
 
-  const url = new URL("/auth", request.url);
-  return NextResponse.redirect(url);
+  // Explicitly clear all cookies to ensure they're deleted
+  request.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
+  });
+
+  return response;
 }
