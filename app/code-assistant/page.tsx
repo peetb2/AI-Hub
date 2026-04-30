@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const modelAliases: Record<string, string> = {
@@ -37,6 +38,8 @@ export default function CodeAssistantPage() {
   );
   const [notice, setNotice] = useState("Loading activated models...");
   const [sending, setSending] = useState(false);
+  const [storageKey, setStorageKey] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const supabaseReady = Boolean(getSupabaseConfig());
 
@@ -61,8 +64,21 @@ export default function CodeAssistantPage() {
       if (userError || !userData.user) {
         setAvailableModels([]);
         setSelectedModel("");
+        setIsAdmin(false);
         setNotice("Sign in to use activated models.");
         return;
+      }
+
+      if (userData.user.user_metadata?.role === "admin" || userData.user.app_metadata?.role === "admin") {
+        setIsAdmin(true);
+      } else {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userData.user.id)
+          .maybeSingle();
+
+        setIsAdmin(profile?.role === "admin");
       }
 
       const { data, error } = await supabase
@@ -104,6 +120,30 @@ export default function CodeAssistantPage() {
 
       setSelectedModel((currentModel) => (models.includes(currentModel) ? currentModel : models[0]));
       setNotice("Loaded activated models from your account.");
+
+      const key = `matcha-ai-hub:code-assistant:${userData.user.id}`;
+      setStorageKey(key);
+
+      const savedStateRaw = window.localStorage.getItem(key);
+
+      if (savedStateRaw) {
+        try {
+          const savedState = JSON.parse(savedStateRaw) as {
+            messages?: Array<{ role: "user" | "assistant"; content: string }>;
+            selectedModel?: string;
+          };
+
+          if (Array.isArray(savedState.messages)) {
+            setMessages(savedState.messages.slice(-50));
+          }
+
+          if (savedState.selectedModel && models.includes(savedState.selectedModel)) {
+            setSelectedModel(savedState.selectedModel);
+          }
+        } catch {
+          window.localStorage.removeItem(key);
+        }
+      }
     };
 
     void loadModels();
@@ -112,6 +152,27 @@ export default function CodeAssistantPage() {
       active = false;
     };
   }, [supabaseReady]);
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        messages: messages.slice(-50),
+        selectedModel,
+      }),
+    );
+  }, [messages, selectedModel, storageKey]);
+
+  const clearChat = () => {
+    setMessages([]);
+    if (storageKey) {
+      window.localStorage.removeItem(storageKey);
+    }
+  };
 
   const sendMessage = async () => {
     const trimmed = input.trim();
@@ -175,8 +236,41 @@ export default function CodeAssistantPage() {
           <div className="pointer-events-none absolute right-8 top-8 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
 
           <div className="mx-auto max-w-4xl">
+            {isAdmin && (
+              <div className="mb-4 rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/15 to-slate-900/50 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-purple-200/80">Admin</p>
+                    <h2 className="mt-1 text-lg font-semibold text-white">Admin Control Center</h2>
+                    <p className="mt-1 text-sm text-slate-300">Manage each user's quota directly from here.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href="/admin"
+                      className="rounded-xl border border-purple-400/30 bg-purple-400/15 px-4 py-2 text-sm font-medium text-purple-100 transition hover:bg-purple-400/25"
+                    >
+                      Open Admin Page
+                    </Link>
+                    <Link
+                      href="/admin/quota"
+                      className="rounded-xl border border-purple-400/30 bg-purple-400/15 px-4 py-2 text-sm font-medium text-purple-100 transition hover:bg-purple-400/25"
+                    >
+                      Manage Quotas
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm text-slate-400">AI Chat</p>
+              <button
+                type="button"
+                onClick={clearChat}
+                className="text-xs text-slate-500 transition hover:text-slate-300"
+              >
+                Clear chat
+              </button>
             </div>
 
             <div className="mb-5 min-h-40 space-y-3">

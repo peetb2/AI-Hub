@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { canUseTokens, trackTokenUsage } from "@/lib/tokenUsage";
 
 type ChatRequest = {
   model: string;
@@ -49,6 +51,26 @@ export async function POST(request: Request) {
   const baseUrl = getLocalAiBaseUrl();
   const apiKey = process.env.LOCAL_AI_API_KEY;
   const runtimeModel = resolveRuntimeModel(body.model);
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const estimatedCharacters = body.prompt.length;
+
+  const hasQuota = await canUseTokens(user.id, estimatedCharacters);
+
+  if (!hasQuota) {
+    return NextResponse.json(
+      { error: "Monthly token quota reached" },
+      { status: 429 },
+    );
+  }
 
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -99,6 +121,12 @@ export async function POST(request: Request) {
     }
 
     const formattedContent = looksLikeHtmlOrCode(content, body.prompt) ? wrapInHtmlFence(content) : content;
+
+    await trackTokenUsage(
+      user.id,
+      body.prompt.length + formattedContent.length,
+      body.mode === "agent" ? "code-assistant" : "chat",
+    );
 
     return NextResponse.json({ content: formattedContent, usedModel: runtimeModel });
   } catch (error) {

@@ -10,8 +10,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const response = NextResponse.redirect(new URL("/auth", request.url));
+  const response = NextResponse.redirect(new URL("/auth", request.url), {
+    status: 302,
+  });
 
+  // Explicitly clear all cookies FIRST
+  request.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie.name, "", { 
+      maxAge: 0, 
+      path: "/",
+      httpOnly: true,
+      sameSite: 'lax'
+    });
+  });
+
+  // Then create Supabase client and sign out
   const supabase = createServerClient(
     config.url,
     config.anonKey,
@@ -22,7 +35,11 @@ export async function GET(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, { ...options, maxAge: 0, path: "/" });
+            response.cookies.set(name, value, { 
+              ...options, 
+              maxAge: 0, 
+              path: "/" 
+            });
           });
         },
       },
@@ -30,11 +47,6 @@ export async function GET(request: NextRequest) {
   );
 
   await supabase.auth.signOut();
-
-  // Explicitly clear all cookies to ensure they're deleted
-  request.cookies.getAll().forEach((cookie) => {
-    response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
-  });
 
   return response;
 }

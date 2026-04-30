@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function GlassNavbar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -14,6 +15,24 @@ export default function GlassNavbar() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+
+      if (!user) {
+        setUserRole(null);
+        return;
+      }
+
+      if (user.user_metadata?.role === "admin" || user.app_metadata?.role === "admin") {
+        setUserRole("admin");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setUserRole(profile?.role ?? null);
     };
     checkUser();
   }, []);
@@ -21,12 +40,11 @@ export default function GlassNavbar() {
   const handleSignOut = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/auth/signout");
-      if (response.ok) {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = "/auth";
-      }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/auth";
     } catch (error) {
       console.error("Sign out failed:", error);
       setIsLoading(false);
@@ -56,6 +74,7 @@ export default function GlassNavbar() {
 
       {/* Right: Auth buttons */}
       <div className="flex items-center gap-3">
+        {/* Admin buttons removed */}
         {user ? (
           <>
             <span className="text-sm text-slate-300 hidden sm:inline">

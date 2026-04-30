@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerTokenFromAuthHeader, validateApiKey, logApiKeyUsage, touchApiKeyLastUsed } from '@/lib/gateway/apiKeys';
+import { trackTokenUsage } from '@/lib/tokenUsage';
 
 export async function POST(req: NextRequest) {
   console.log("🚨 Chat completion request received");
@@ -54,8 +55,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const responseClone = ollamaResponse.clone();
+    const responseText = await responseClone.text();
+
     // Log successful usage
     await logApiKeyUsage({ apiKeyId: validated.id, model, statusCode: 200 });
+
+    await trackTokenUsage(
+      validated.userId,
+      JSON.stringify(rest).length + responseText.length,
+      'api-gateway',
+    );
 
     // Stream response back
     return new Response(ollamaResponse.body, {
