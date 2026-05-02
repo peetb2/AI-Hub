@@ -67,8 +67,11 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070a11] text-slate-100 flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c111c] p-6">
+    <div className="min-h-screen text-slate-100 flex items-center justify-center px-6">
+      <div className="w-full max-w-md rounded-[2.5rem] border border-white/10 bg-black/40 p-8 backdrop-blur-xl shadow-2xl">
+        <div className="h-12 w-12 mb-6">
+          <img src="/StartNow_logo.png" alt="StartNow Logo" className="h-full w-full object-contain" />
+        </div>
         <p className="text-xs uppercase tracking-[0.3em] text-cyan-300">SN-AI Hub</p>
         <h1 className="mt-2 text-2xl font-semibold text-white">Sign In Or Sign Up</h1>
         <p className="mt-2 text-sm text-slate-400">Authenticate with Supabase to access your workspace.</p>

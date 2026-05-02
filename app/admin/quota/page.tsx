@@ -41,7 +41,10 @@ export default function AdminTokenQuotaPage() {
         return;
       }
 
-      if (!response.ok) throw new Error('Failed to fetch quota data');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch: ${response.statusText}`);
+      }
 
       const data = await response.json();
       setUsers(data);
@@ -91,7 +94,7 @@ export default function AdminTokenQuotaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-12">
+      <div className="px-6 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="animate-pulse">
             <div className="h-8 bg-white/10 rounded w-1/3 mb-6"></div>
@@ -109,7 +112,7 @@ export default function AdminTokenQuotaPage() {
   // Render page even if not admin; errors are shown in the UI
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-12">
+    <div className="px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>

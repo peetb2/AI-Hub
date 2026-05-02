@@ -6,7 +6,7 @@ type ApiKeyRow = {
   user_id: string;
   key_prefix: string;
   key_hash: string;
-  allowed_model: string;
+  allowed_models: string[];
   is_active: boolean;
   expires_at: string | null;
 };
@@ -14,7 +14,7 @@ type ApiKeyRow = {
 export type ValidatedApiKey = {
   id: string;
   userId: string;
-  allowedModel: string;
+  allowedModels: string[];
 };
 
 type ServiceEnv = {
@@ -57,12 +57,12 @@ export function createServiceRoleClient() {
   });
 }
 
-export function hashApiKeySecret(secret: string): string {
+function hashApiKeySecret(secret: string): string {
   const env = getServiceEnv();
   return createHash("sha256").update(`${secret}:${env.signingSalt}`).digest("hex");
 }
 
-export function generateRawApiKey() {
+function generateRawApiKey() {
   const prefix = randomBytes(6).toString("hex");
   const secret = randomBytes(24).toString("hex");
   const fullKey = `mha_live_${prefix}_${secret}`;
@@ -74,7 +74,7 @@ export function generateRawApiKey() {
   };
 }
 
-export function parseRawApiKey(raw: string) {
+function parseRawApiKey(raw: string) {
   if (!raw.startsWith("mha_live_")) {
     return null;
   }
@@ -114,7 +114,7 @@ export function bearerTokenFromAuthHeader(authHeader: string | null): string | n
 
 export async function createApiKeyRecord(params: {
   userId: string;
-  allowedModel: string;
+  allowedModels: string[];
   expiresAt?: string | null;
 }) {
   const supabase = createServiceRoleClient();
@@ -127,10 +127,10 @@ export async function createApiKeyRecord(params: {
       user_id: params.userId,
       key_prefix: key.prefix,
       key_hash: keyHash,
-      allowed_model: params.allowedModel,
+      allowed_models: params.allowedModels,
       expires_at: params.expiresAt ?? null,
     })
-    .select("id, allowed_model, created_at, expires_at")
+    .select("id, allowed_models, created_at, expires_at")
     .single();
 
   if (error) {
@@ -148,7 +148,7 @@ export async function listApiKeysForUser(userId: string) {
 
   const { data, error } = await supabase
     .from("api_keys")
-    .select("id, key_prefix, allowed_model, is_active, created_at, expires_at, last_used_at")
+    .select("id, key_prefix, allowed_models, is_active, created_at, expires_at, last_used_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -173,6 +173,20 @@ export async function revokeApiKeyForUser(userId: string, keyId: string) {
   }
 }
 
+export async function deleteApiKeyForUser(userId: string, keyId: string) {
+  const supabase = createServiceRoleClient();
+
+  const { error } = await supabase
+    .from("api_keys")
+    .delete()
+    .eq("id", keyId)
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(`Unable to delete API key: ${error.message}`);
+  }
+}
+
 export async function validateApiKey(rawKey: string): Promise<ValidatedApiKey | null> {
   const parsed = parseRawApiKey(rawKey);
 
@@ -184,7 +198,7 @@ export async function validateApiKey(rawKey: string): Promise<ValidatedApiKey | 
 
   const { data, error } = await supabase
     .from("api_keys")
-    .select("id, user_id, key_prefix, key_hash, allowed_model, is_active, expires_at")
+    .select("id, user_id, key_prefix, key_hash, allowed_models, is_active, expires_at")
     .eq("key_prefix", parsed.prefix)
     .maybeSingle<ApiKeyRow>();
 
@@ -205,7 +219,7 @@ export async function validateApiKey(rawKey: string): Promise<ValidatedApiKey | 
   return {
     id: data.id,
     userId: data.user_id,
-    allowedModel: data.allowed_model,
+    allowedModels: data.allowed_models || [],
   };
 }
 

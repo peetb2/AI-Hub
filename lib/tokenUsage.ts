@@ -32,7 +32,7 @@ export async function trackTokenUsage(
  * @param userId - User ID
  * @returns Number of characters used this month
  */
-export async function getUserMonthlyUsage(userId: string): Promise<number> {
+async function getUserMonthlyUsage(userId: string): Promise<number> {
   const supabase = createServiceRoleClient();
 
   // Get usage from the start of the current month
@@ -65,7 +65,7 @@ export async function getUserMonthlyUsage(userId: string): Promise<number> {
  * @param userId - User ID
  * @returns Monthly character quota limit
  */
-export async function getUserQuota(userId: string): Promise<number> {
+async function getUserQuota(userId: string): Promise<number> {
   const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
@@ -87,7 +87,7 @@ export async function getUserQuota(userId: string): Promise<number> {
  * @param userId - User ID
  * @returns Remaining characters or 0 if quota exceeded
  */
-export async function getRemainingQuota(userId: string): Promise<number> {
+async function getRemainingQuota(userId: string): Promise<number> {
   const usage = await getUserMonthlyUsage(userId);
   const quota = await getUserQuota(userId);
   return Math.max(0, quota - usage);

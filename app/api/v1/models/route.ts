@@ -15,16 +15,15 @@ export async function GET(request: Request) {
   }
 
   const now = Math.floor(Date.now() / 1000);
+  const models = (validated.allowedModels || []).map(m => ({
+    id: m,
+    object: "model",
+    created: now,
+    owned_by: "matcha-ai-hub",
+  }));
 
   return NextResponse.json({
     object: "list",
-    data: [
-      {
-        id: validated.allowedModel,
-        object: "model",
-        created: now,
-        owned_by: "matcha-ai-hub",
-      },
-    ],
+    data: models,
   });
 }

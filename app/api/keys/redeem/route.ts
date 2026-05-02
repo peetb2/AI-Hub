@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createApiKeyRecord } from "@/lib/gateway/apiKeys";
 
 type RedeemRequest = {
-  model?: string;
-  personalKey?: string;
+  models?: string[];
   expiresInDays?: number | null;
 };
 
@@ -31,60 +30,51 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as RedeemRequest;
-  const model = normalizeModelName(body.model ?? "");
-  const personalKey = body.personalKey?.trim() ?? "";
+  const models = (body.models || []).map(m => normalizeModelName(m));
 
-  if (!model) {
-    return NextResponse.json({ error: "model is required" }, { status: 400 });
+  if (models.length === 0) {
+    return NextResponse.json({ error: "At least one model must be selected" }, { status: 400 });
   }
 
-  if (!personalKey) {
-    return NextResponse.json({ error: "personalKey is required" }, { status: 400 });
-  }
-
-  const { data: userModelKey, error: keyError } = await supabase
-    .from("user_keys")
-    .select("key_value, revoked_at, expires_at")
+  // NEW HUB LOGIC: Check user_access instead of user_keys
+  const { data: userAccess, error: accessError } = await supabase
+    .from("user_access")
+    .select("model_name, expires_at")
     .eq("user_id", user.id)
-    .eq("key_name", model)
-    .maybeSingle<{ key_value: string; revoked_at: string | null; expires_at: string | null }>();
+    .in("model_name", models);
 
-  if (keyError) {
-    return NextResponse.json({ error: `Unable to validate personal key: ${keyError.message}` }, { status: 500 });
+  if (accessError) {
+    return NextResponse.json({ error: `Unable to validate access: ${accessError.message}` }, { status: 500 });
   }
 
-  if (!userModelKey) {
-    return NextResponse.json({ error: "No saved key found for this model" }, { status: 404 });
+  const foundModelNames = (userAccess || []).map(a => a.model_name);
+  const missingModels = models.filter(m => !foundModelNames.includes(m));
+
+  if (missingModels.length > 0) {
+    return NextResponse.json({ 
+      error: `You haven't activated access for: ${missingModels.join(", ")}` 
+    }, { status: 404 });
   }
 
-  if (userModelKey.revoked_at) {
-    return NextResponse.json({ error: "This personal key has been revoked" }, { status: 400 });
+  // Validate all requested models are still active (not expired)
+  const now = Date.now();
+  for (const access of userAccess || []) {
+    if (new Date(access.expires_at).getTime() < now) {
+      return NextResponse.json({ error: `Access for ${access.model_name} has expired. Please buy a new license key.` }, { status: 400 });
+    }
   }
-
-  if (userModelKey.expires_at && new Date(userModelKey.expires_at).getTime() < Date.now()) {
-    return NextResponse.json({ error: "This personal key has expired" }, { status: 400 });
-  }
-
-  if (userModelKey.key_value !== personalKey) {
-    return NextResponse.json({ error: "Personal key does not match saved key for this model" }, { status: 400 });
-  }
-
-  const parsedDays = typeof body.expiresInDays === "number" ? body.expiresInDays : null;
-  const expiresAt = parsedDays && parsedDays > 0
-    ? new Date(Date.now() + parsedDays * 86400000).toISOString()
-    : null;
 
   try {
     const apiKey = await createApiKeyRecord({
       userId: user.id,
-      allowedModel: model,
-      expiresAt,
+      allowedModels: models,
+      expiresAt: null, // No separate expiration for the gateway key
     });
 
     return NextResponse.json({
       id: apiKey.id,
       key: apiKey.plainKey,
-      allowedModel: apiKey.allowed_model,
+      allowedModels: apiKey.allowed_models,
       createdAt: apiKey.created_at,
       expiresAt: apiKey.expires_at,
     });

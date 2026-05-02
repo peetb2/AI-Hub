@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface QuotaInfo {
   used: number;
@@ -14,13 +14,8 @@ export default function TokenQuotaPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchQuotaInfo();
-  }, []);
-
-  const fetchQuotaInfo = async () => {
+  const fetchQuotaInfo = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await fetch('/api/token-quota/my-quota');
       if (!response.ok) throw new Error('Failed to fetch quota info');
       const data = await response.json();
@@ -28,34 +23,28 @@ export default function TokenQuotaPanel() {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch quota');
-      setQuotaInfo(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getProgressColor = (percentUsed: number) => {
-    if (percentUsed < 50) return 'bg-emerald-500';
-    if (percentUsed < 80) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+  useEffect(() => {
+    fetchQuotaInfo();
+  }, [fetchQuotaInfo]);
 
   if (loading) {
     return (
-      <div className="bg-black/90 border border-white/10 rounded-lg p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-white/10 rounded w-1/3 mb-4"></div>
-          <div className="h-2 bg-white/10 rounded w-full mb-2"></div>
-          <div className="h-3 bg-white/10 rounded w-1/2"></div>
-        </div>
+      <div className="flex-1 rounded-3xl border border-white/5 bg-white/[0.02] p-6 backdrop-blur-xl animate-pulse">
+        <div className="h-4 w-24 bg-white/10 rounded mb-4" />
+        <div className="h-8 w-48 bg-white/10 rounded" />
       </div>
     );
   }
 
   if (error || !quotaInfo) {
     return (
-      <div className="bg-black/90 border border-white/10 rounded-lg p-6">
-        <p className="text-red-400 text-sm">{error || 'Failed to load quota info'}</p>
+      <div className="flex-1 rounded-3xl border border-rose-500/10 bg-rose-500/[0.02] p-6 backdrop-blur-xl">
+        <p className="text-rose-400 text-sm">{error || 'Failed to load quota info'}</p>
       </div>
     );
   }
@@ -63,48 +52,40 @@ export default function TokenQuotaPanel() {
   const { used, quota, remaining, percentUsed } = quotaInfo;
 
   return (
-    <div className="bg-black/90 border border-white/10 rounded-lg p-6 space-y-4">
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-white">Monthly Token Quota</h3>
-          <span className="text-sm text-white/60">{percentUsed}% used</span>
+    <div className="relative overflow-hidden flex-1 rounded-3xl border border-white/10 bg-black/40 p-6 backdrop-blur-xl group transition-all hover:border-emerald-500/30">
+      {/* Background Glow */}
+      <div className="absolute -right-4 -top-4 h-24 w-24 bg-emerald-500/10 blur-2xl rounded-full transition-all group-hover:bg-emerald-500/20" />
+      
+      <div className="relative flex flex-col h-full justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Monthly Quota</span>
+            <button onClick={fetchQuotaInfo} className="text-slate-500 hover:text-white transition">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+            </button>
+          </div>
+          
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-3xl font-bold text-white tracking-tight">{(remaining / 1000).toFixed(1)}k</h3>
+            <span className="text-sm text-slate-500 font-medium">characters left</span>
+          </div>
         </div>
-        <p className="text-xs text-white/50">
-          {used.toLocaleString()} / {quota.toLocaleString()} characters
-        </p>
-      </div>
 
-      {/* Progress Bar */}
-      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
-        <div
-          className={`h-full ${getProgressColor(percentUsed)} transition-all duration-300`}
-          style={{ width: `${Math.min(percentUsed, 100)}%` }}
-        ></div>
+        <div className="mt-6">
+          <div className="flex justify-between text-[10px] font-medium text-slate-500 mb-1.5 px-0.5">
+            <span>{percentUsed}% CONSUMED</span>
+            <span>{quota.toLocaleString()} TOTAL</span>
+          </div>
+          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-1000 ${
+                percentUsed > 90 ? 'bg-rose-500' : percentUsed > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}
+              style={{ width: `${Math.min(percentUsed, 100)}%` }}
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Remaining Text */}
-      <div className="pt-2 border-t border-white/10">
-        <p className="text-sm text-emerald-400">
-          {remaining.toLocaleString()} characters remaining this month
-        </p>
-        {percentUsed >= 80 && (
-          <p className="text-xs text-yellow-400 mt-2">
-            ⚠️ You're using {percentUsed}% of your quota. Contact an admin if you need more.
-          </p>
-        )}
-        {remaining <= 0 && (
-          <p className="text-xs text-red-400 mt-2">
-            ❌ You've reached your monthly quota limit. Please try again next month.
-          </p>
-        )}
-      </div>
-
-      <button
-        onClick={fetchQuotaInfo}
-        className="w-full text-xs px-3 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded transition-colors"
-      >
-        Refresh
-      </button>
     </div>
   );
 }

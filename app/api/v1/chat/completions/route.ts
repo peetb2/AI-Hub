@@ -26,10 +26,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { model, ...rest } = body;
 
-    // Check if requested model matches allowed model
-    if (model !== validated.allowedModel) {
-      console.error("❌ Model not allowed:", model, "allowed:", validated.allowedModel);
+    // Check if requested model matches allowed models
+    if (!validated.allowedModels.includes(model)) {
+      console.error("❌ Model not allowed:", model, "allowed:", validated.allowedModels);
       return NextResponse.json({ error: { message: "Model not allowed for this API key", type: "invalid_request_error" } }, { status: 403 });
+    }
+
+    // NEW SECURITY CHECK: Verify individual model expiration from user_access table
+    const { data: currentAccess, error: accessError } = await (await import('@/lib/supabase/server')).createClient().then(s => s
+      .from("user_access")
+      .select("expires_at")
+      .eq("user_id", validated.userId)
+      .eq("model_name", model)
+      .maybeSingle()
+    );
+
+    if (accessError || !currentAccess || new Date(currentAccess.expires_at).getTime() < Date.now()) {
+      console.error("❌ Access expired for model:", model);
+      return NextResponse.json({ error: { message: "Access for this model has expired. Please reactivate with a new license key.", type: "access_expired" } }, { status: 403 });
     }
 
     const baseUrl = process.env.LOCAL_AI_BASE_URL ?? "http://localhost:11434/v1";

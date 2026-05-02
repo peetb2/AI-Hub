@@ -10,8 +10,14 @@ const adminCards = [
     accent: "from-purple-500/20 to-fuchsia-500/10 border-purple-400/30",
   },
   {
-    title: "API Token Manager",
-    description: "Review and revoke user API keys and gateway access tokens.",
+    title: "License Factory",
+    description: "Generate multi-model access keys and manage customer durations.",
+    href: "/admin/licenses",
+    accent: "from-purple-500/20 to-indigo-500/10 border-purple-400/30",
+  },
+  {
+    title: "Gateway Access Keys",
+    description: "Review and revoke the API keys used by external clients to access your hub.",
     href: "/admin/tokens",
     accent: "from-emerald-500/20 to-cyan-500/10 border-emerald-400/30",
   },
@@ -19,7 +25,7 @@ const adminCards = [
 
 export default function AdminHomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-12 text-slate-100">
+    <div className="px-6 py-12 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
           <p className="text-xs uppercase tracking-[0.28em] text-cyan-300">Admin</p>

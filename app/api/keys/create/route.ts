@@ -25,18 +25,18 @@ export async function POST(request: Request) {
   const expiresAt = body.expiresAt ?? (parsedDays && parsedDays > 0 ? new Date(Date.now() + parsedDays * 86400000).toISOString() : null);
 
   try {
-    const key = await createApiKeyRecord({
+    const apiKey = await createApiKeyRecord({
       userId: user.id,
-      allowedModel: model,
+      allowedModels: [model],
       expiresAt,
     });
 
     return NextResponse.json({
-      id: key.id,
-      key: key.plainKey,
-      allowedModel: key.allowed_model,
-      createdAt: key.created_at,
-      expiresAt: key.expires_at,
+      id: apiKey.id,
+      key: apiKey.plainKey,
+      allowedModels: apiKey.allowed_models,
+      createdAt: apiKey.created_at,
+      expiresAt: apiKey.expires_at,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create API key";

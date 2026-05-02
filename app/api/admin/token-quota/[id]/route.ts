@@ -6,36 +6,25 @@ export async function PUT(request: Request, context: any) {
     const supabase = await createClient();
 
     // Check if user is admin
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-
+    // Strictly check if user is admin
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
       .maybeSingle();
 
-
-    if (!profile) {
-      const { error: insertError } = await supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email ?? '',
-        role: 'user',
-        monthly_token_quota: 100000,
-      });
-
-      if (insertError) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
+    if (profileError || !profile || profile.role !== 'admin') {
+      return NextResponse.json(
+        { error: "Forbidden: Admin access required" },
+        { status: 403 }
+      );
     }
-
-
 
     const body = await request.json();
     const { monthly_token_quota } = body;
@@ -56,13 +45,16 @@ export async function PUT(request: Request, context: any) {
       .select('id, email, monthly_token_quota')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating quota in database:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
 
     return NextResponse.json(updatedProfile);
   } catch (error) {
-    console.error('Error updating token quota:', error);
+    console.error('Critical error updating token quota:', error);
     return NextResponse.json(
-      { error: 'Failed to update token quota' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

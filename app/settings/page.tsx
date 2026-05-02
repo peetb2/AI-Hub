@@ -144,18 +144,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div
-      className="min-h-screen text-slate-100"
-      style={{
-        backgroundColor: "#111318",
-        backgroundImage: "url('/topography.svg')",
-        backgroundRepeat: "repeat",
-        backgroundSize: "600px 600px",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      <div className="mx-auto w-full max-w-3xl px-6 py-12">
-        <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">SN-AI Hub</p>
+    <div className="relative mx-auto w-full max-w-3xl px-6 py-12">
+      <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">SN-AI Hub</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Settings</h1>
         <p className="mt-2 text-sm text-slate-400">Update your profile name, email address, and password.</p>
 
@@ -267,6 +257,5 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }

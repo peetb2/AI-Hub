@@ -60,17 +60,32 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-slate-100">
-        {showSidebar && <Sidebar initialUserRole={initialUserRole} />}
-        {initialUserRole === "admin" && (
-          <Link
-            href="/admin"
-            className="fixed bottom-6 right-6 z-[60] rounded-full border border-purple-400/40 bg-purple-500/90 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 transition hover:bg-purple-400"
-          >
-            Admin Page
-          </Link>
-        )}
-        <main className={showSidebar ? "ml-56 flex-1" : "flex-1"}>{children}</main>
+      <body className="min-h-full flex flex-col bg-[#0d0f14] text-slate-100">
+        {/* Global Background Layer */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#0d0f14]">
+          {/* Base Topography Texture */}
+          <div 
+            className="absolute inset-0 opacity-[0.12]"
+            style={{
+              backgroundImage: "url('/topography.svg')",
+              backgroundRepeat: "repeat",
+              backgroundSize: "600px 600px",
+              filter: "invert(1) brightness(0.6)",
+            }}
+          />
+          
+          {/* Modern Glows */}
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 blur-[120px] rounded-full" />
+          
+          {/* Subtle Vignette */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0d0f14]/80" />
+        </div>
+
+        <div className="relative z-10 flex flex-1">
+          {showSidebar && <Sidebar initialUserRole={initialUserRole} />}
+          <main className="flex-1">{children}</main>
+        </div>
       </body>
     </html>
   );

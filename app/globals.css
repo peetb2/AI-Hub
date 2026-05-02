@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #696969;
+  --background: #0d0f14;
   --foreground: #e2e8f0;
 }
 
@@ -33,20 +33,6 @@ body {
   font-family: var(--font-geist-sans), "IBM Plex Sans", "Segoe UI", sans-serif;
   position: relative;
   min-height: 100vh;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: url("/topography.svg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: invert(1) saturate(0) brightness(0.55);
-  opacity: 0.18;
 }
 
 /* When the sidebar is hidden (e.g. on the full-screen Main Menu), remove the left margin
