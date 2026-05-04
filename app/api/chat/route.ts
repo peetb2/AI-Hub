@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { canUseTokens, trackTokenUsage } from "@/lib/tokenUsage";
+import { CODING_GUARDRAIL_PROMPT } from "@/lib/guardrails";
 
 type ChatRequest = {
   model: string;
@@ -86,8 +87,8 @@ export async function POST(request: Request) {
             role: "system",
             content:
               body.mode === "agent"
-                ? "You are a coding agent. Be concise, practical, and return implementation-ready guidance. When returning code, keep formatting intact and wrap it in fenced code blocks."
-                : "You are a coding assistant. Be concise and directly answer the user's request. When returning code or HTML, keep formatting intact and wrap it in fenced code blocks.",
+                ? `${CODING_GUARDRAIL_PROMPT}\n\nYou are currently acting as a coding agent. Be concise, practical, and return implementation-ready guidance. When returning code, keep formatting intact and wrap it in fenced code blocks.`
+                : `${CODING_GUARDRAIL_PROMPT}\n\nYou are currently acting as a coding assistant. Be concise and directly answer the user's request. When returning code or HTML, keep formatting intact and wrap it in fenced code blocks.`,
           },
           {
             role: "user",

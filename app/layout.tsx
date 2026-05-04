@@ -64,7 +64,7 @@ export default async function RootLayout({
         {/* Global Background Layer */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#0d0f14]">
           {/* Base Topography Texture */}
-          <div 
+          <div
             className="absolute inset-0 opacity-[0.12]"
             style={{
               backgroundImage: "url('/topography.svg')",
@@ -73,11 +73,11 @@ export default async function RootLayout({
               filter: "invert(1) brightness(0.6)",
             }}
           />
-          
+
           {/* Modern Glows */}
           <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 blur-[120px] rounded-full" />
-          
+
           {/* Subtle Vignette */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0d0f14]/80" />
         </div>

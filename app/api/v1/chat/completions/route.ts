@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerTokenFromAuthHeader, validateApiKey, logApiKeyUsage, touchApiKeyLastUsed } from '@/lib/gateway/apiKeys';
 import { trackTokenUsage } from '@/lib/tokenUsage';
+import { enforceCodingGuardrail } from '@/lib/guardrails';
+
+type ChatMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  name?: string;
+  tool_call_id?: string;
+};
 
 export async function POST(req: NextRequest) {
   console.log("🚨 Chat completion request received");
@@ -24,7 +32,20 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { model, ...rest } = body;
+    const { model, messages, ...rest } = body;
+
+    // Apply coding guardrail to messages
+    const processedMessages: ChatMessage[] = [...(messages || [])];
+    const systemMessageIndex = processedMessages.findIndex((m: ChatMessage) => m.role === 'system');
+
+    if (systemMessageIndex !== -1) {
+      processedMessages[systemMessageIndex].content = enforceCodingGuardrail(processedMessages[systemMessageIndex].content);
+    } else {
+      processedMessages.unshift({
+        role: 'system',
+        content: enforceCodingGuardrail()
+      });
+    }
 
     // Check if requested model matches allowed models
     if (!validated.allowedModels.includes(model)) {
@@ -53,7 +74,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...rest, model: `${model}:latest` }),
+      body: JSON.stringify({ ...rest, model: `${model}:latest`, messages: processedMessages }),
     });
 
     // Update last used

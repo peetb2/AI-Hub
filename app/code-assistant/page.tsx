@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { useEffect, useState, useRef, KeyboardEvent } from "react";
+import { MarkdownResponse } from "@/app/components/markdown-response";
 
 const modelLabels: Record<string, string> = {
   "glm-4.7-flash": "GLM 4.7 Flash",
@@ -164,7 +165,11 @@ export default function CodeAssistantPage() {
                   ? "bg-cyan-500/10 border border-cyan-500/20 text-cyan-100" 
                   : "bg-white/5 border border-white/5 text-slate-200"
               }`}>
-                <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                {m.role === "assistant" ? (
+                  <MarkdownResponse content={m.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                )}
               </div>
               <span className="mt-1 text-[9px] font-bold text-slate-600 uppercase tracking-tighter mx-2">
                 {m.role === "user" ? "You" : (modelLabels[selectedModel] || selectedModel)}
