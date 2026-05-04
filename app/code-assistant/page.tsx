@@ -225,7 +225,7 @@ export default function CodeAssistantPage() {
           </div>
           <div className="mt-3 flex items-center justify-center gap-2">
             <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Matcha Node Active</p>
+            <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">SN-Ai Node Active</p>
           </div>
         </div>
       </div>

@@ -45,7 +45,7 @@ export default function GlassNavbar() {
           <div className="h-8 w-8 shrink-0 flex items-center justify-center transition-all group-hover:scale-105">
             <img src="/StartNow_logo.png" alt="StartNow Logo" className="h-full w-full object-contain" />
           </div>
-          <span className="text-lg font-bold tracking-tight text-white hidden sm:block">Matcha<span className="text-cyan-400">Hub</span></span>
+          <span className="text-lg font-bold tracking-tight text-white hidden sm:block">SN-Ai<span className="text-cyan-400"> Hub</span></span>
         </div>
 
         <div className="flex items-center gap-6">
