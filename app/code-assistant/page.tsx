@@ -23,6 +23,7 @@ export default function CodeAssistantPage() {
   const [notice, setNotice] = useState("");
   const [sending, setSending] = useState(false);
   const [storageKey, setStorageKey] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -46,6 +47,42 @@ export default function CodeAssistantPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Save to Database
+  const saveToDatabase = async (currentMessages: typeof messages) => {
+    if (!supabaseReady || currentMessages.length === 0) return;
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+
+    try {
+      if (sessionId) {
+        const { error } = await supabase
+          .from("chat_sessions")
+          .update({ messages: currentMessages, updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
+        if (error) console.error("Error updating chat session:", error);
+      } else {
+        const { data, error } = await supabase
+          .from("chat_sessions")
+          .insert({
+            user_id: userData.user.id,
+            messages: currentMessages,
+            title: currentMessages[0].content.slice(0, 40) + "..."
+          })
+          .select("id")
+          .single();
+        
+        if (error) {
+          console.error("Error creating chat session:", error);
+        } else if (data) {
+          setSessionId(data.id);
+        }
+      }
+    } catch (err) {
+      console.error("Database save failed:", err);
+    }
+  };
+
   useEffect(() => {
     let active = true;
     const loadActivatedModels = async () => {
@@ -57,19 +94,20 @@ export default function CodeAssistantPage() {
       const { data: userData } = await supabase.auth.getUser();
       if (!active || !userData.user) return;
 
-      const { data, error } = await supabase
+      const { data: keysData, error: keysError } = await supabase
         .from("user_keys")
         .select("key_name")
         .eq("user_id", userData.user.id)
         .is("revoked_at", null);
 
       if (!active) return;
-      if (error) {
+      if (keysError) {
         setNotice("Error loading keys.");
+        console.error("Error loading user keys:", keysError);
         return;
       }
 
-      const activeNames = (data ?? []).map(r => r.key_name);
+      const activeNames = (keysData ?? []).map(r => r.key_name);
       setActivatedModels(activeNames);
 
       if (activeNames.length > 0) {
@@ -79,14 +117,35 @@ export default function CodeAssistantPage() {
         setNotice("No models activated. Go to Key Center first.");
       }
       
-      const sKey = `matcha-hub:chat-v2:${userData.user.id}`;
-      setStorageKey(sKey);
-      const saved = window.localStorage.getItem(sKey);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed.messages)) setMessages(parsed.messages);
-        } catch { /* ignore */ }
+      // Load from DB first, then fallback to LocalStorage
+      try {
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("chat_sessions")
+          .select("id, messages")
+          .eq("user_id", userData.user.id)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (sessionError) {
+          console.error("Error loading chat session from DB:", sessionError);
+        } else if (active && sessionData) {
+          setSessionId(sessionData.id);
+          setMessages(sessionData.messages as any || []);
+        } else {
+          // Fallback to local storage if no DB session found
+          const sKey = `matcha-hub:chat-v2:${userData.user.id}`;
+          setStorageKey(sKey);
+          const saved = window.localStorage.getItem(sKey);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed.messages)) setMessages(parsed.messages);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (err) {
+        console.error("Database load failed:", err);
       }
     };
     loadActivatedModels();
@@ -111,7 +170,11 @@ export default function CodeAssistantPage() {
     if (!trimmed || sending || !selectedModel) return;
 
     setSending(true);
-    setMessages(prev => [...prev, { role: "user", content: trimmed }]);
+    const updatedMessages: Array<{ role: "user" | "assistant"; content: string }> = [
+      ...messages, 
+      { role: "user", content: trimmed }
+    ];
+    setMessages(updatedMessages);
     setInput("");
 
     try {
@@ -124,12 +187,25 @@ export default function CodeAssistantPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
-      setMessages(prev => [...prev, { role: "assistant", content: data.content }]);
+      const finalMessages: Array<{ role: "user" | "assistant"; content: string }> = [
+        ...updatedMessages, 
+        { role: "assistant", content: data.content }
+      ];
+      setMessages(finalMessages);
+      
+      // Persist to DB
+      await saveToDatabase(finalMessages);
     } catch (error) {
       setMessages(prev => [...prev, { role: "assistant", content: `Error: ${error instanceof Error ? error.message : "Failed to reach AI"}` }]);
     } finally {
       setSending(false);
     }
+  };
+
+  const clearChat = async () => {
+    setMessages([]);
+    setSessionId(null);
+    if (storageKey) window.localStorage.removeItem(storageKey);
   };
 
   return (
@@ -140,7 +216,7 @@ export default function CodeAssistantPage() {
             <h2 className="text-sm font-bold text-white uppercase tracking-widest">AI Chat</h2>
             {notice && <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">{notice}</span>}
          </div>
-         <button onClick={() => setMessages([])} className="text-xs font-bold text-slate-500 hover:text-rose-400 transition">
+         <button onClick={clearChat} className="text-xs font-bold text-slate-500 hover:text-rose-400 transition">
             Clear Chat
          </button>
       </header>

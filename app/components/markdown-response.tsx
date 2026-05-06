@@ -7,15 +7,15 @@ interface MarkdownResponseProps {
 }
 
 export function MarkdownResponse({ content }: MarkdownResponseProps) {
-  // Regex to match code blocks: ```language\ncode\n```
+  // Improved Regex to match code blocks: ```language? (newline) code (newline) ```
   const parts = content.split(/(```[\s\S]*?```)/g);
 
   return (
     <div className="space-y-4">
       {parts.filter(Boolean).map((part, index) => {
         if (part.startsWith("```")) {
-          // Extract language and code
-          const match = part.match(/```(\w+)?\n([\s\S]*?)```/);
+          // Extract language and code with more tolerant regex
+          const match = part.match(/```(\w+)?\s*\n?([\s\S]*?)```/);
           const lang = match?.[1] || "code";
           const code = match?.[2] || "";
 

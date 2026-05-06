@@ -31,7 +31,8 @@ function looksLikeHtmlOrCode(content: string, prompt: string) {
 function wrapInHtmlFence(content: string) {
   const trimmed = content.trim();
 
-  if (trimmed.startsWith("```")) {
+  // If it already starts with a code block or contains any code blocks, don't wrap it again
+  if (trimmed.startsWith("```") || trimmed.includes("\n```")) {
     return content;
   }
 
